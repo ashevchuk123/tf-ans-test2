@@ -1,0 +1,65 @@
+---
+#- name: Apt Update
+#  ansible.builtin.apt:
+#    name: "apache2"
+#    state: present
+#    update_cache: yes
+
+- name: Add Docker’s official GPG key
+  apt_key:
+    url: https://download.docker.com/linux/ubuntu/gpg
+    state: present
+- name: Copy py script
+  ansible.builtin.copy:
+    src: "../files/{{ cloudfront_script_name }}"
+    dest: "/tmp/{{ cloudfront_script_name }}"
+
+- name: Add Docker Repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_facts.lsb.codename }} stable"
+    state: present
+
+- name: update caches & install Docker
+  ansible.builtin.apt:
+     name={{ item }}
+     state=present
+     update_cache=yes
+  loop:
+    - python3-pip
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+
+- name: Install docker pip3
+  command: pip3 install docker
+
+- name: create directory
+  file:
+    path: "{{ host_docker_mount_path }}/nginx"
+    state: directory
+
+- name: Create a volume
+  docker_volume:
+    name: "{{ nginx_volume_name }}"
+    driver_options:
+      type: none
+      device: "{{ host_docker_mount_path }}/nginx"
+      o: bind
+
+- name: Update Main Page
+  lineinfile:
+    create: yes
+    dest: "{{ host_docker_mount_path }}/www/index.html"
+    line: "Hello from {{ ansible_ssh_host }}"
+
+- name: Create nginx container
+  docker_container:
+    name: "{{ container_name }}"
+    image: nginx
+    volumes:
+      - "{{ nginx_volume_name }}:/etc/nginx:rw"
+      - "{{ host_docker_mount_path }}/www:/usr/share/nginx/html:rw"
+
+- name: Run script
+  ansible.builtin.command: "python3 /tmp/{{ cloudfront_script_name }} {{ host_docker_mount_path }}/nginx/conf.d/default.conf"
+  become: yes

@@ -1,0 +1,6 @@
+ - name: Configure nodes
+   hosts: web
+   gather_facts: yes
+   become: yes
+   roles:
+    - webapp

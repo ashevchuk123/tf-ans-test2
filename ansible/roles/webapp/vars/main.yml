@@ -1,0 +1,4 @@
+host_docker_mount_path: /docker_data
+nginx_volume_name: nginx_volume_config
+cloudfront_script_name: cloudfront_add_allow_ip.py
+container_name: nginx1
